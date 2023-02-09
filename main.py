@@ -1,6 +1,7 @@
 import requests
 import datetime
 import math
+from twilio.rest import Client
 import html
 STOCK = "TSLA"
 COMPANY_NAME = "Tesla Inc"
@@ -9,6 +10,8 @@ KEY = "B67N7JDLVUMA9A6R"
 NEWS_KEY = "4211967b8023437e8d89cc9d4a0ea432"
 URL_NEWS = "https://newsapi.org/v2/everything?"
 
+account_sid = "AC02eb8d729f051151ab2930022a99f435"
+auth_token = "d4f68edc716c8b20c5bd73ff9925d80c"
 
 
 PARAMETERS = {
@@ -18,7 +21,7 @@ PARAMETERS = {
 }
 
 PARAMETERS2 = {
-    "q": COMPANY_NAME,
+    "qinTitle": COMPANY_NAME,
     "apiKey": NEWS_KEY,
 }
 ## STEP 1: Use https://www.alphavantage.co
@@ -34,26 +37,35 @@ yesterday_stock = float(data['Time Series (Daily)'][yesterday_date]["4. close"])
 day_before_yesterday_stock = float(data['Time Series (Daily)'][day_before_yesterday_date]["4. close"])
 x = "🔻" if (day_before_yesterday_stock-yesterday_stock) < 0 else "🔺"
 change_percentage = math.fabs((day_before_yesterday_stock-yesterday_stock)/yesterday_stock*100)
-if change_percentage >= 5:
-    print("Get News")
+
+
 
 ## STEP 2: Use https://newsapi.org
 # Instead of printing ("Get News"), actually get the first 3 news pieces for the COMPANY_NAME.
-response = requests.get(url="https://newsapi.org/v2/everything", params=PARAMETERS2)
-response.raise_for_status()
-news = response.json()
-print(news)
-titles = []
-descriptions = []
-for i in range(3):
-    titles.append(news["articles"][i]["title"])
-    descriptions.append(news["articles"][i]["description"])
-news_formatted = [html.unescape(f"{COMPANY_NAME}: {x}{change_percentage}% \nHeadline: {a}\n Brief: {b}")
-                  for (a, b) in zip(titles, descriptions)]
+
+if change_percentage >= 1:
+    response = requests.get(url="https://newsapi.org/v2/everything", params=PARAMETERS2)
+    response.raise_for_status()
+    news = response.json()
+    titles = []
+    descriptions = []
+    for i in range(3):
+        titles.append(news["articles"][i]["title"])
+        descriptions.append(news["articles"][i]["description"])
+    news_formatted = [f"{COMPANY_NAME}: {x}{change_percentage}% \n Headline: {a} \n Brief: {b}"
+                      for (a, b) in zip(titles, descriptions)]
 
 ## STEP 3: Use https://www.twilio.com
 # Send a seperate message with the percentage change and each article's title and description to your phone number.
 
+client = Client(account_sid, auth_token)
+
+for i in news_formatted:
+    message = client.messages.create(
+                         body=i,
+                         from_='+15095120878',
+                         to='+573022496216'
+                     )
 
 #Optional: Format the SMS message like this:
 """
